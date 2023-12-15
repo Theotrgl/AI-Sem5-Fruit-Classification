@@ -1,104 +1,97 @@
+import tensorflow as tf
+import numpy as np
 import os
 import pathlib
 import glob
-import numpy as np
-import tensorflow as tf
-from sklearn.model_selection import train_test_split
-from tensorflow.keras import Model
-from tensorflow.keras.layers import *
-from tensorflow.keras.losses import CategoricalCrossentropy
-from tensorflow.keras.applications import MobileNetV2
-from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
-from tensorflow.keras.callbacks import EarlyStopping
+
+home_path = str(pathlib.Path.home())
+file_path = '/.keras/datasets/FinalFruits/'
+base_dir = home_path + file_path
+saved_model_dir = '/mnt/d/Binus/S5/AI/Final_Project/Datasets/Fruits'
+
+IMAGE_SIZE = 224
+BATCH_SIZE = 64
 
 
-CLASSES = ['freshapples', 'freshbanana', 'freshoranges','rottenapples','rottenbanana','rottenoranges']
-AUTOTUNE = tf.data.experimental.AUTOTUNE
+datagen = tf.keras.preprocessing.image.ImageDataGenerator(
+    rescale=1./255, 
+    validation_split=0.2)
+    #increase variety of trainings to generalize the model
+    # rotation_range=0.2,
+    # width_shift_range=0.2,
+    # height_shift_range=0.2,
+    # shear_range=0.2,
+    # zoom_range=0.2,
+    # horizontal_flip=True,
+    # fill_mode='nearest')
 
-def load_image_and_label(image_path, target_size=(224, 224)): ##224 is target size for MobileNetV2
-    image = tf.io.read_file(image_path)
-    image = tf.image.decode_jpeg(image, channels=3)  # Change channels to 3 for RGB images
-    image = tf.image.convert_image_dtype(imcage, np.float32)
-    image = tf.image.resize(image, target_size)
-    image = preprocess_input(image)  # MobileNetV2 requires specific preprocessing
+train_generator = datagen.flow_from_directory(
+    base_dir,
+    target_size=(IMAGE_SIZE, IMAGE_SIZE),
+    batch_size=BATCH_SIZE, 
+    subset='training')
 
-    label = tf.strings.split(image_path, os.path.sep)[-2]
-    label = (label == CLASSES)  # One-hot encode.
-    label = tf.dtypes.cast(label, tf.float32)
+val_generator = datagen.flow_from_directory(
+    base_dir,
+    target_size=(IMAGE_SIZE, IMAGE_SIZE),
+    batch_size=BATCH_SIZE, 
+    subset='validation')
 
-    return image, label
+log_dir = os.path.join('Tutorials/AI_FinalProject','logs')
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir)
 
-def build_mobile_netv2(fine_tune_at=100):
-    base_model = MobileNetV2(input_shape=(224,224,3), include_top=False, weights='imagenet')
-    base_model.trainable = True
-    for layer in base_model.layers[:fine_tune_at]:
-        layer.trainable = False
-    input_layer = Input(shape=(224,224,3))
-    x = base_model(input_layer,training=False)
-    x = GlobalAveragePooling2D()(x)
-    x = Dense(256,activation='relu')(x)
-    output = Dense(6,activation='softmax')(x) # Adjust units based on your classes
-    model = Model(input_layer,output)
-    return model
+for image_batch, label_batch in train_generator:
+  break
+image_batch.shape, label_batch.shape
 
-def prepare_dataset(dataset_path,
-                    buffer_size,
-                    batch_size,
-                    shuffle=True):
-    dataset = (tf.data.Dataset
-               .from_tensor_slices(dataset_path)
-               .map(load_image_and_label,
-                    num_parallel_calls=AUTOTUNE))
+print(train_generator.class_indices)
 
-    if shuffle:
-        dataset.shuffle(buffer_size=buffer_size)
-
-    dataset = (dataset
-               .batch(batch_size=batch_size)
-               .prefetch(buffer_size=buffer_size))
-
-    return dataset
-
-train_file_pattern = str(pathlib.Path.home() / '.keras' / 'datasets' / 'fruits' / 'dataset' / 'train' / '*' / '*.png')
-test_file_pattern = str(pathlib.Path.home() / '.keras' / 'datasets' / 'fruits' / 'dataset' / 'test' / '*' / '*.png')
+labels = '\n'.join(sorted(train_generator.class_indices.keys()))
 
 
-train_dataset_paths = [*glob.glob(train_file_pattern)]
-test_dataset_paths = [*glob.glob(test_file_pattern)]
 
-train_paths, test_paths = train_test_split(train_dataset_paths,
-                                           test_size=0.2,
-                                           random_state=999)
-train_paths, val_paths = train_test_split(train_paths,
-                                          test_size=0.2,
-                                          random_state=999)
+labels_model_path = os.path.join(saved_model_dir,'labels.txt')
+with open(labels_model_path, 'wb') as f:  
+  f.write(labels.encode('utf-8'))
 
-BATCH_SIZE = 32 # MobileNetV2 works well with smaller batch sizes
-BUFFER_SIZE = 1024
+IMG_SHAPE = (IMAGE_SIZE, IMAGE_SIZE, 3)
 
-train_dataset = prepare_dataset(train_paths,
-                                buffer_size=BUFFER_SIZE,
-                                batch_size=BATCH_SIZE)
-validation_dataset = prepare_dataset(val_paths,
-                                     buffer_size=BUFFER_SIZE,
-                                     batch_size=BATCH_SIZE,
-                                     shuffle=False)
-test_dataset = prepare_dataset(test_paths,
-                               buffer_size=BUFFER_SIZE,
-                               batch_size=BATCH_SIZE,
-                               shuffle=False)
+base_model = tf.keras.applications.MobileNetV2(input_shape=IMG_SHAPE,
+                                              include_top=False, 
+                                              weights='imagenet')
 
-model = build_mobile_netv2()
-model.compile(loss=CategoricalCrossentropy(from_logits=True),
-              optimizer='adam',
+base_model.trainable = False
+
+model = tf.keras.Sequential([
+      base_model,
+  tf.keras.layers.Conv2D(32, 3, activation='relu'),
+  tf.keras.layers.Dropout(0.2),
+  tf.keras.layers.GlobalAveragePooling2D(),
+  tf.keras.layers.Dense(12, activation='softmax')
+])
+
+
+
+model.compile(optimizer=tf.keras.optimizers.Adam(), 
+              loss='categorical_crossentropy', 
               metrics=['accuracy'])
 
-EPOCHS = 100
-early_stopping = EarlyStopping(monitor='val_loss', patience=5)
-model.fit(train_dataset,
-          validation_data=validation_dataset,
-          epochs=EPOCHS,
-          callbacks=[early_stopping])
+epochs = 10
 
-test_loss, test_accuracy = model.evaluate(test_dataset)
-print(f'Loss: {test_loss}, accuracy: {test_accuracy}')
+# early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+
+history = model.fit(train_generator, 
+                    epochs=epochs, 
+                    validation_data=val_generator)
+                    # callbacks=[early_stopping])
+
+
+tf.saved_model.save(model, saved_model_dir)
+
+converter = tf.lite.TFLiteConverter.from_saved_model(saved_model_dir)
+tflite_model = converter.convert()
+tflite_model_path = os.path.join(saved_model_dir,'modelv2.tflite')
+print("TFLite Model Path:", tflite_model_path)
+
+with open(tflite_model_path, 'wb') as f:
+  f.write(tflite_model)
