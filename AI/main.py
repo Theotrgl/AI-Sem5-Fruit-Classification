@@ -9,7 +9,7 @@ import base64
 app = FastAPI()
 
 # Load your TensorFlow Lite model
-interpreter = tf.lite.Interpreter(model_path="assets/modelv2.tflite")
+interpreter = tf.lite.Interpreter(model_path="assets/modelv3.tflite")
 interpreter.allocate_tensors()
 
 # Load labels
@@ -56,10 +56,14 @@ async def predict(file: UploadFile = File(...)):
     output_data = interpreter.get_tensor(output_details[0]['index'])
 
     predicted_class_index = np.argmax(output_data[0])
-    predicted_label = labels[predicted_class_index]
 
     # Get prediction confidence
     prediction_confidence = output_data[0][predicted_class_index]
+
+    if prediction_confidence < 0.8:
+        predicted_label = "Unknown Fruit"
+    else:
+        predicted_label = labels[predicted_class_index]
 
     # Convert image to base64 for displaying in HTML
     buffered = BytesIO()
