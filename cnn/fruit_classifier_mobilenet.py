@@ -3,42 +3,47 @@ import numpy as np
 import os
 import pathlib
 import glob
+from tensorflow.keras import regularizers
 
 home_path = str(pathlib.Path.home())
 file_path = '/.keras/datasets/FinalFruits/'
+log_dir = '/Tutorials/AI_FinalProject/logs'
 base_dir = home_path + file_path
+log_absolute_path = home_path + log_dir
 saved_model_dir = '/mnt/d/Binus/S5/AI/Final_Project/Datasets/Fruits'
 
 IMAGE_SIZE = 224
-BATCH_SIZE = 64
+BATCH_SIZE = 128
 
 
 datagen = tf.keras.preprocessing.image.ImageDataGenerator(
     rescale=1./255, 
-    validation_split=0.2)
-    #increase variety of trainings to generalize the model
-    # rotation_range=0.2,
-    # width_shift_range=0.2,
-    # height_shift_range=0.2,
-    # shear_range=0.2,
-    # zoom_range=0.2,
-    # horizontal_flip=True,
-    # fill_mode='nearest')
+    validation_split=0.2,
+    
+    rotation_range=0.2,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest')
 
 train_generator = datagen.flow_from_directory(
     base_dir,
     target_size=(IMAGE_SIZE, IMAGE_SIZE),
     batch_size=BATCH_SIZE, 
-    subset='training')
+    subset='training',
+    class_mode='categorical')
 
 val_generator = datagen.flow_from_directory(
     base_dir,
     target_size=(IMAGE_SIZE, IMAGE_SIZE),
     batch_size=BATCH_SIZE, 
-    subset='validation')
+    subset='validation',
+    class_mode='categorical')
 
-log_dir = os.path.join('Tutorials/AI_FinalProject','logs')
-tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir)
+
+tensorboard_callback = tf.keras.callbacks.TensorBoard(log_absolute_path)
 
 for image_batch, label_batch in train_generator:
   break
@@ -47,8 +52,7 @@ image_batch.shape, label_batch.shape
 print(train_generator.class_indices)
 
 labels = '\n'.join(sorted(train_generator.class_indices.keys()))
-
-
+num_classes = len(labels)
 
 labels_model_path = os.path.join(saved_model_dir,'labels.txt')
 with open(labels_model_path, 'wb') as f:  
@@ -62,28 +66,29 @@ base_model = tf.keras.applications.MobileNetV2(input_shape=IMG_SHAPE,
 
 base_model.trainable = False
 
+
+
 model = tf.keras.Sequential([
-      base_model,
-  tf.keras.layers.Conv2D(32, 3, activation='relu'),
+  base_model,
+  tf.keras.layers.Conv2D(32, 3, activation='relu', kernel_regularizer=regularizers.l2(0.01)),
   tf.keras.layers.Dropout(0.2),
   tf.keras.layers.GlobalAveragePooling2D(),
   tf.keras.layers.Dense(12, activation='softmax')
 ])
 
 
-
 model.compile(optimizer=tf.keras.optimizers.Adam(), 
               loss='categorical_crossentropy', 
               metrics=['accuracy'])
 
-epochs = 10
+epochs = 100
 
-# early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True)
+early_stopping = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
 history = model.fit(train_generator, 
                     epochs=epochs, 
-                    validation_data=val_generator)
-                    # callbacks=[early_stopping])
+                    validation_data=val_generator,
+                    callbacks=[early_stopping, tensorboard_callback])
 
 
 tf.saved_model.save(model, saved_model_dir)
