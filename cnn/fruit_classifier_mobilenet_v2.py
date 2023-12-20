@@ -32,6 +32,7 @@ test_path = home_path + "/.keras/datasets/TestFruits/"
 log_absolute_path = home_path + log_dir
 saved_model_dir = "/mnt/d/Binus/S5/AI/Final_Project/Datasets/Fruits"
 
+# Set image dimension and batch size
 IMAGE_SIZE = 224
 BATCH_SIZE = 128
 
@@ -48,9 +49,9 @@ datagen = tf.keras.preprocessing.image.ImageDataGenerator(
     fill_mode="nearest",
 )
 
-
+# Preprocessing for test data
 test_datagen = tf.keras.preprocessing.image.ImageDataGenerator(rescale=1.0 / 255)
-test_generator = test_datagen.flow_from_directory(
+test_generator = test_datagen.flow_from_directory( #generators for training
     test_path,
     target_size=(IMAGE_SIZE, IMAGE_SIZE),
     batch_size=BATCH_SIZE,
@@ -76,6 +77,7 @@ val_generator = datagen.flow_from_directory(
     class_mode="categorical",
 )
 
+# Tensorboard callback for logging and visualization
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_absolute_path)
 
 # Get a batch of images and labels from the training generator
@@ -106,10 +108,20 @@ base_model.trainable = False
 model = tf.keras.Sequential(
     [
         base_model,
+
+        # Adding a convolutional layer with 32 filters of size 3x3.
+        # ReLU (Rectified Linear Unit) activation function is applied after the convolution operation.
+        # L2 regularization with a penalty of 0.01 is applied to the kernel weights.
         tf.keras.layers.Conv2D(
-            32, 3, activation="relu", kernel_regularizer=regularizers.l2(0.01)
+            32, 3, activation="relu", kernel_regularizer=regularizers.l2(0.01) #
         ),
+
+        # Dropout layer to regularize the model and prevent overfitting.
+        # It randomly sets a fraction of the input units to 0 during training.
         tf.keras.layers.Dropout(0.2),
+
+        # Global Average Pooling 2D layer to convert the 2D feature maps into a 1D feature vector.
+        # This reduces the spatial dimensions and retains the most important features.
         tf.keras.layers.GlobalAveragePooling2D(),
         tf.keras.layers.Dense(12, activation="softmax"),
     ]
@@ -122,9 +134,10 @@ Compile the model with optimizer, loss function, and evaluation metrics
 optimizer Adam : Adam is a popular optimizer for models, combining AdaGrad and RMSProp's advantages to minimize loss function and adjust model weights and biases during training.,
 loss categorical_crossentropy: Categorical crossentropy is a loss function that is used for single-label classification. This is when only one category is applicable for each data point.,
 metrics accuracy: Accuracy is the fraction of predictions our model got right. It is calculated by dividing the number of correct predictions made by the model by the total number of predictions made for each class.,
-metrics precision: Precision is the fraction of true positives out of all the predicted positives. It is calculated by dividing the number of true positives by the number of true positives and false positives.,,
+metrics precision: Precision is the fraction of true positives out of all the predicted positives. It is calculated by dividing the number of true positives by the number of true positives and false positives.,
 metrics recall: Recall is the fraction of true positives out of all the actual positives. It is calculated by dividing the number of true positives by the number of true positives and false negatives.
 """
+
 model.compile(
     optimizer=tf.keras.optimizers.Adam(),
     loss="categorical_crossentropy",
