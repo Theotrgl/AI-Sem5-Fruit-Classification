@@ -39,5 +39,14 @@
 <h2>Video Demo</h2>
 <p>A demonstration of the project can be viewed <a href="https://youtu.be/ZEOwV2rRGKM">here</a>.</p>
 
+<h2>Languages & Frameworks Used</h2>
+
+![Python](https://img.shields.io/badge/Python-3.7+-blue?style=for-the-badge&logo=python)
+![Keras](https://img.shields.io/badge/Keras-2.4-red?style=for-the-badge&logo=keras)
+![TensorFlow](https://img.shields.io/badge/TensorFlow-2.5-orange?style=for-the-badge&logo=tensorflow)
+![MobileNetV2](https://img.shields.io/badge/MobileNetV2-green?style=for-the-badge&logo=mobile)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.68-blueviolet?style=for-the-badge&logo=fastapi)
+
+
 <h2>Credits</h2>
 This Readme was written by Pandya.
