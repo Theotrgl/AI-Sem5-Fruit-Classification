@@ -46,7 +46,7 @@ async def predict(file: UploadFile = File(...)):
     image = Image.open(BytesIO(contents)).convert("RGB")
     image_resized = image.resize((224, 224))  # Adjust size
     image_array = np.array(image_resized, dtype=np.float32)
-    image_array /= 255.0  # Normalize if needed
+    image_array /= 255.0  # Normalize
 
     input_details = interpreter.get_input_details()
     interpreter.set_tensor(input_details[0]['index'], [image_array])
