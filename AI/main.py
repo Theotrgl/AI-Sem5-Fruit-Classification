@@ -44,7 +44,7 @@ async def main():
 async def predict(file: UploadFile = File(...)):
     contents = await file.read()
     image = Image.open(BytesIO(contents)).convert("RGB")
-    image_resized = image.resize((224, 224))  # Adjust size as per your model's input requirements
+    image_resized = image.resize((224, 224))  # Adjust size
     image_array = np.array(image_resized, dtype=np.float32)
     image_array /= 255.0  # Normalize if needed
 
