@@ -105,27 +105,23 @@ base_model = tf.keras.applications.MobileNetV2(
 base_model.trainable = False
 
 # Construct the final model by adding additional layers on top of the base model
-model = tf.keras.Sequential(
-    [
-        base_model,
 
-        # Adding a convolutional layer with 32 filters of size 3x3.
-        # ReLU (Rectified Linear Unit) activation function is applied after the convolution operation.
-        # L2 regularization with a penalty of 0.01 is applied to the kernel weights.
-        tf.keras.layers.Conv2D(
-            32, 3, activation="relu", kernel_regularizer=regularizers.l2(0.01) #
-        ),
-
-        # Dropout layer to regularize the model and prevent overfitting.
-        # It randomly sets a fraction of the input units to 0 during training.
-        tf.keras.layers.Dropout(0.2),
-
-        # Global Average Pooling 2D layer to convert the 2D feature maps into a 1D feature vector.
+model = tf.keras.Sequential([
+    base_model,
+    # Adding a convolutional layer with 64 filters of size 3x3.
+    # ReLU (Rectified Linear Unit) activation function is applied after the convolution operation.
+    # L2 regularization with a penalty of 0.01 is applied to the kernel weights.
+    tf.keras.layers.Conv2D(64, 3, kernel_regularizer=regularizers.l2(0.01)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Activation('relu'),
+    # Dropout layer to regularize the model and prevent overfitting.
+    # It randomly sets a fraction of the input units to 0 during training.
+    tf.keras.layers.Dropout(0.2),
+    # Global Average Pooling 2D layer to convert the 2D feature maps into a 1D feature vector.
         # This reduces the spatial dimensions and retains the most important features.
-        tf.keras.layers.GlobalAveragePooling2D(),
-        tf.keras.layers.Dense(12, activation="softmax"),
-    ]
-)
+    tf.keras.layers.GlobalAveragePooling2D(),
+    tf.keras.layers.Dense(12, activation='softmax')
+])
 
 
 """
